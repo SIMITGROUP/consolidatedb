@@ -2,65 +2,63 @@ package main
 
 import (
 	"database/sql"
-	"encoding/csv"
 	"fmt"
-	"os"
-	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 )
 
-func ImportCSVToDB(foldername string, tables []string) {
+// func ImportCSVToDB(foldername string, tables []string) {
 
-	for _, table := range tables {
+// 	for _, table := range tables {
 
-		filename := filepath.Join(datafolder, foldername, table+".csv")
-		file, err := os.Open(filename)
-		if err != nil {
-			logrus.Fatal(err.Error())
-		}
-		reader := csv.NewReader(file)
-		data, err2 := reader.ReadAll()
-		columns := []string{}
+// 		filename := filepath.Join(datafolder, foldername, table+".csv")
+// 		file, err := os.Open(filename)
+// 		if err != nil {
+// 			logrus.Fatal(err.Error())
+// 		}
+// 		reader := csv.NewReader(file)
+// 		data, err2 := reader.ReadAll()
+// 		columns := []string{}
 
-		if err2 == nil {
-			for i, row := range data {
-				if i == 0 {
-					columns = row
-					logrus.Info(columns)
-				} else {
-					logrus.Info(row)
-				}
-			}
+// 		if err2 == nil {
+// 			for i, row := range data {
+// 				if i == 0 {
+// 					columns = row
+// 					logrus.Info(columns)
+// 				} else {
+// 					logrus.Info(row)
+// 				}
+// 			}
 
-		} else {
-			logrus.Fatal(err2)
-		}
-		logrus.Info("Import data ", filename)
-		sql := fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\n' IGNORE 1 ROWS", filename, table)
-		logrus.Warn(sql)
-		// res, err := localdb.Query(sql)
-		res, err := localdb.Exec(sql)
-		logrus.Info(res, err)
+// 		} else {
+// 			logrus.Fatal(err2)
+// 		}
+// 		logrus.Info("Import data ", filename)
+// 		sql := fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\n' IGNORE 1 ROWS", filename, table)
+// 		logrus.Warn(sql)
+// 		// res, err := localdb.Query(sql)
+// 		res, err := localdb.Exec(sql)
+// 		logrus.Info(res, err)
 
-	}
+// 	}
 
-	// db, err := ConnectDB(dbsetting)
-	// sql := "SELECT * FROM ?"
-	// if err == nil {
-	// 	for _, tablename := range tables {
-	// 		res, errquery := db.Query(sql, tablename)
-	// 		if errquery == nil {
+// db, err := ConnectDB(dbsetting)
+// sql := "SELECT * FROM ?"
+// if err == nil {
+// 	for _, tablename := range tables {
+// 		res, errquery := db.Query(sql, tablename)
+// 		if errquery == nil {
 
-	// 		} else {
-	// 			logrus.Fatal(errquery)
-	// 		}
+// 		} else {
+// 			logrus.Fatal(errquery)
+// 		}
 
-	// 	}
+// 	}
 
-	// }
-}
+// }
+// }
 
 func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 	//connect to specific tenant
@@ -69,13 +67,14 @@ func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 	//loop through all table
 	for _, tablename := range tables {
 		// get all data
+
 		sql := fmt.Sprintf("SELECT %s FROM %s", mapfieldstr[tablename], tablename)
-		logrus.Info(sql)
+		// logrus.Info(sql)
 		rows, err := db.Query(sql)
 		if err == nil {
 			//insert all data into local db
 			err = InsertRecord(dbsetting.Tenant_id, tablename, rows)
-
+			rows.Close()
 		} else {
 			logrus.Fatal(err)
 		}
@@ -116,8 +115,13 @@ func InsertRecord(tenant_id string, tablename string, rows *sql.Rows) (err error
 	// 		logrus.Fatal("Field '", f, "' does not exists in table '", tablename, "'")
 	// 	}
 	// }
-
+	rowcount := 0
+	batchsize := 50
+	batchno := 0
+	rowstring := ""
 	for rows.Next() {
+		rowcount++
+		batchno++
 		err = rows.Scan(rowPtr...)
 		tmp := "'" + tenant_id + "'"
 		for i, f := range cols {
@@ -125,29 +129,54 @@ func InsertRecord(tenant_id string, tablename string, rows *sql.Rows) (err error
 
 			numeric_precision, found := mapfields[tablename].Get(f)
 			if found == true && numeric_precision == true {
-				logrus.Warn(f, ": before ", fmt.Sprintf("%#v", value))
+				// logrus.Warn(f, ": before ", fmt.Sprintf("%#v", value))
 				if value == "" {
 					value = "0"
 				}
-				logrus.Warn(f, ": after ", fmt.Sprintf("%#v", value))
+				// logrus.Warn(f, ": after ", fmt.Sprintf("%#v", value))
 				tmp += ", " + value
 			} else {
 				tmp += ", '" + MysqlRealEscapeString(value) + "'"
 			}
 
 		}
+
+		if batchno >= batchsize {
+			batchno = 0
+			rowstring += ",(" + tmp + ")"
+			sqlstr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", tablename, colstring, rowstring)
+			rowstring = ""
+			// logrus.Warn(sqlstr)
+			_, errinsert := localdb.Exec(sqlstr)
+			if errinsert != nil {
+
+				logrus.Fatal(errinsert)
+			}
+		} else {
+			if rowstring == "" {
+				rowstring = "(" + tmp + ")"
+			} else {
+				rowstring += ",(" + tmp + ")"
+			}
+			// logrus.Warn(batchno, " : ", tmp)
+
+		}
 		// rowstring := string(bytes.Join(row, seperator))
 
-		sqlstr := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tablename, colstring, tmp)
+	}
+
+	if rowstring != "" {
+		sqlstr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", tablename, colstring, rowstring)
 		_, errinsert := localdb.Exec(sqlstr)
-		logrus.Info(sqlstr)
-
-		// _, errinsert := local(sqlstr, row)
-
 		if errinsert != nil {
+
 			logrus.Fatal(errinsert)
 		}
 	}
+	logrus.Info("Import [", tenant_id, "] => ", tablename, " x ", rowcount)
+	// if rowcount > 0 {
+	// 	log.Fatal("Done")
+	// }
 
 	return
 }
@@ -168,4 +197,24 @@ func MysqlRealEscapeString(value string) string {
 		}
 	}
 	return sb.String()
+}
+
+func in_array(val interface{}, array interface{}) (exists bool, index int) {
+	exists = false
+	index = -1
+
+	switch reflect.TypeOf(array).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(array)
+
+		for i := 0; i < s.Len(); i++ {
+			if reflect.DeepEqual(val, s.Index(i).Interface()) == true {
+				index = i
+				exists = true
+				return
+			}
+		}
+	}
+
+	return
 }

@@ -82,7 +82,7 @@ func GetAllTableAndFields(db *sql.DB, dbname string) {
 				continue
 			} else {
 				fields := mapfields[tablename] //mapfields.Get(tablename)
-				logrus.Warn("add ", tablename, ":", f.Field, ":", f.NumericPrecision.String)
+				// logrus.Warn("add ", tablename, ":", f.Field, ":", f.NumericPrecision.String)
 				fields.Put(f.Field, f.NumericPrecision.Valid)
 			}
 		}
@@ -90,12 +90,12 @@ func GetAllTableAndFields(db *sql.DB, dbname string) {
 	}
 
 	for tablename, fields := range mapfields {
-		logrus.Error(tablename, fields.Keys())
+		// logrus.Error(tablename, fields.Keys())
 		for i, fieldname := range fields.Keys() {
 			if i > 0 {
 				mapfieldstr[tablename] += ", "
 			}
-			logrus.Info("-=----------", fieldname)
+
 			mapfieldstr[tablename] += fmt.Sprintf("`%v`", fieldname)
 		}
 	}

@@ -2,11 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/emirpasic/gods/maps/hashmap"
 	"github.com/joho/godotenv"
@@ -24,12 +25,13 @@ var mastertables []string
 var Delimiter = ','
 var mapfields = make(map[string]*hashmap.Map)
 var mapfieldstr = make(map[string]string)
+var excludedtables = []string{"tenant_master", "gps_event", "system_event"}
 
 func main() {
 	// sql_tablelist := "SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_type = 'BASE TABLE' and table_schema=?"
 	var wg sync.WaitGroup
 	err := godotenv.Load()
-
+	start := time.Now()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -42,7 +44,7 @@ func main() {
 
 	fmt.Println("Welcome mysql db consoler:")
 
-	CreateFolderIfNotExists(datafolder)
+	// CreateFolderIfNotExists(datafolder)
 
 	localdb, err = ConnectLocalDB()
 
@@ -73,6 +75,7 @@ func main() {
 			mastertables = GenerateTables(dbsettings[0])
 
 		}
+
 		for i, setting := range dbsettings {
 			wg.Add(1) // declare new go routine added
 			go func(i int, dbsetting Model_DBSetting, tables []string) {
@@ -84,9 +87,9 @@ func main() {
 				defer wg.Done()
 			}(i, setting, mastertables)
 		}
-		logrus.Info("before wait")
+		// logrus.Info("before wait")
 		wg.Wait()
-		logrus.Info("after wait")
+
 		// for _, tablename := range localtables {
 		// 	//play safe, exclude tenant_master table
 		// 	if tablename != table_tenant {
@@ -98,6 +101,12 @@ func main() {
 		logrus.Fatal("connect failed")
 	}
 
+	r := new(big.Int)
+	fmt.Println(r.Binomial(1000, 10))
+
+	elapsed := time.Since(start)
+	log.Printf("Binomial took %s", elapsed)
+
 }
 
 // generate master tables according first db setting, return list of tables
@@ -106,9 +115,9 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 	if err == nil {
 		tables = GetAllTables(db, dbsetting.Db)
 		GetAllTableAndFields(db, dbsetting.Db)
-		for i, j := range mapfields {
-			logrus.Info(i, ":", j.Keys())
-		}
+		// for i, j := range mapfields {
+		// 	logrus.Info(i, ":", j.Keys())
+		// }
 	}
 	/*index data
 	[{
@@ -129,7 +138,7 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 		var tablesetting []Model_FieldSetting
 
 		sql := "DESCRIBE " + tablename
-		logrus.Info(sql)
+		// logrus.Info(sql)
 		rows, err2 := db.Query(sql)
 		if err2 == nil {
 			var fieldsetting Model_FieldSetting
@@ -142,14 +151,14 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 				tablesetting = append(tablesetting, fieldsetting)
 			}
 
-			sqlcreate := "CREATE TABLE " + tablename + " (`tenant_id` varchar(20) "
+			sqlcreate := "CREATE TABLE " + tablename + " (`tenant_id` int(11) "
 
 			for _, s := range tablesetting {
 				// ignore tenant_id field
 				if s.Field == "tenant_id" {
 					continue
 				}
-				logrus.Info(s.Field, ":", s.Key)
+				// logrus.Info(s.Field, ":", s.Key)
 				if s.Key == "PRI" {
 					primarykey = "tenant_id," + s.Field
 				}
@@ -160,9 +169,10 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 			if primarykey == "" {
 				logrus.Fatal(tablename + " undefined primarykey")
 			}
-			sqlcreate = sqlcreate + ", PRIMARY KEY (" + primarykey + ")) ENGINE=InnoDB"
-			logrus.Info(sqlcreate)
-			_, errcreate := localdb.Query(sqlcreate)
+			// sqlcreate = sqlcreate + ", PRIMARY KEY (" + primarykey + ")) ENGINE=InnoDB"
+			sqlcreate = sqlcreate + ") ENGINE=InnoDB"
+			logrus.Info("Created table ", tablename)
+			_, errcreate := localdb.Exec(sqlcreate)
 			if errcreate != nil {
 				logrus.Fatal(errcreate)
 			}
@@ -177,12 +187,13 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 	return
 
 }
-func CreateFolderIfNotExists(path string) {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(path, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 
-}
+// func CreateFolderIfNotExists(path string) {
+// 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+// 		err := os.Mkdir(path, os.ModePerm)
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 	}
+
+// }

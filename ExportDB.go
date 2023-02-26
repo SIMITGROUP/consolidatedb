@@ -1,51 +1,42 @@
 package main
 
-import (
-	"database/sql"
-	"fmt"
-	"path/filepath"
+// func ExportDBToCSV(dbsetting Model_DBSetting, tables []string) {
+// 	db, err := ConnectDB(dbsetting)
+// 	path := filepath.Join(datafolder, dbsetting.Tenant_id)
+// 	CreateFolderIfNotExists(path)
 
-	"github.com/joho/sqltocsv"
-	"github.com/sirupsen/logrus"
-)
+// 	if err == nil {
+// 		for _, tablename := range tables {
+// 			logrus.Info(tablename)
+// 			//ignore tenantmas
+// 			if tablename != table_tenant {
+// 				ExportTableToCSV(db, path, tablename)
+// 			}
 
-func ExportDBToCSV(dbsetting Model_DBSetting, tables []string) {
-	db, err := ConnectDB(dbsetting)
-	path := filepath.Join(datafolder, dbsetting.Tenant_id)
-	CreateFolderIfNotExists(path)
+// 		}
+// 	}
 
-	if err == nil {
-		for _, tablename := range tables {
-			logrus.Info(tablename)
-			//ignore tenantmas
-			if tablename != table_tenant {
-				ExportTableToCSV(db, path, tablename)
-			}
+// }
 
-		}
-	}
+// func ExportTableToCSV(db *sql.DB, path string, tablename string) {
+// 	sql := fmt.Sprintf("SELECT * FROM %s", tablename)
+// 	logrus.Info(sql)
+// 	rows, err := db.Query(sql)
+// 	if err == nil {
 
-}
+// 		filename := filepath.Join(path, tablename+".csv")
 
-func ExportTableToCSV(db *sql.DB, path string, tablename string) {
-	sql := fmt.Sprintf("SELECT * FROM %s", tablename)
-	logrus.Info(sql)
-	rows, err := db.Query(sql)
-	if err == nil {
+// 		err = sqltocsv.WriteFile(filename, rows)
+// 		if err == nil {
+// 			logrus.Info("Exported ", tablename)
+// 		} else {
+// 			logrus.Fatal(err)
+// 		}
+// 	} else {
+// 		logrus.Fatal(err)
+// 	}
 
-		filename := filepath.Join(path, tablename+".csv")
-
-		err = sqltocsv.WriteFile(filename, rows)
-		if err == nil {
-			logrus.Info("Exported ", tablename)
-		} else {
-			logrus.Fatal(err)
-		}
-	} else {
-		logrus.Fatal(err)
-	}
-
-}
+// }
 
 // func WriteFile(csvFileName string, rows *sql.Rows) error {
 // 	return New(rows).WriteFile(csvFileName)
