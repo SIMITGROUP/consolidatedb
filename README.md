@@ -1,44 +1,10 @@
 # project goal
-1. easily consolidate different database table into multitenant table
-2. disable all primarykey, unique key foreign key
+easily consolidate different database into single multitenant database
 
 
-process:
-1. create configuration for:
-a. reconsolidate
-b. add more consolidate
+# process
+1. define tenant_master, which consist of all separated database record, each tag with 1 tenant_id
+2. run consolidatedb to merge all tenant db into current database
 
-configuration:
-host:
-db:
-user:
-pass:
-
-
-./runconsolidation.bin -generateschema
-
-
-
-tablefield:[]any
-
-
-
-[import data]
-for i,setting in instances:
-    if i == 0 
-        sql = getdbschemas(setting)
-        runsql(sql)
-        removeConstraints()
-
-    tables = gettables()
-    go importdata(setting)
-
-
-
-
-
-func importdata(setting)
-    for t,table in tables
-        f = gettablefields()
-
-
+# todo
+1. currently all primary keys, index, and unique key disabled, we need way to recreate it
