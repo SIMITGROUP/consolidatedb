@@ -63,7 +63,7 @@ import (
 func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 	//connect to specific tenant
 	db, err := ConnectDB(dbsetting)
-
+	internaldb, _ := ConnectDB(localdbsetting)
 	//loop through all table
 	for _, tablename := range tables {
 		// get all data
@@ -73,9 +73,10 @@ func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 		rows, err := db.Query(sql)
 		if err == nil {
 			//insert all data into local db
-			err = InsertRecord(dbsetting.Tenant_id, tablename, rows)
+			err = InsertRecord(dbsetting.Tenant_id, internaldb, tablename, rows)
 			rows.Close()
 		} else {
+
 			logrus.Fatal(err)
 		}
 	}
@@ -83,7 +84,7 @@ func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 	return
 }
 
-func InsertRecord(tenant_id string, tablename string, rows *sql.Rows) (err error) {
+func InsertRecord(tenant_id string, internaldb *sql.DB, tablename string, rows *sql.Rows) (err error) {
 	// seperator := []byte("\t")
 	cols := []string{}
 	oricolumns, _ := rows.Columns()
@@ -127,16 +128,30 @@ func InsertRecord(tenant_id string, tablename string, rows *sql.Rows) (err error
 		for i, f := range cols {
 			value := string(row[i])
 
-			numeric_precision, found := mapfields[tablename].Get(f)
-			if found == true && numeric_precision == true {
-				// logrus.Warn(f, ": before ", fmt.Sprintf("%#v", value))
-				if value == "" {
-					value = "0"
+			fieldtype, found := mapfields[tablename].Get(f)
+			if found == true {
+
+				if fieldtype == "number" {
+					if value == "" {
+						value = "0"
+					}
+					tmp += ", " + value
+				} else { // else if fieldtype == "date" {
+					// 	if value == "" {
+					// 		value = "0000-00-00"
+					// 	}
+					// 	tmp += ", '" + value + "'"
+
+					// } else if fieldtype == "datetime" {
+					// 	if value == "" {
+					// 		value = "0000-00-00 00:00:00"
+					// 	}
+					// 	tmp += ", '" + value + "'"
+
+					// }else {
+					tmp += ", '" + MysqlRealEscapeString(value) + "'"
 				}
-				// logrus.Warn(f, ": after ", fmt.Sprintf("%#v", value))
-				tmp += ", " + value
-			} else {
-				tmp += ", '" + MysqlRealEscapeString(value) + "'"
+
 			}
 
 		}
@@ -147,10 +162,10 @@ func InsertRecord(tenant_id string, tablename string, rows *sql.Rows) (err error
 			sqlstr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", tablename, colstring, rowstring)
 			rowstring = ""
 			// logrus.Warn(sqlstr)
-			_, errinsert := localdb.Exec(sqlstr)
+			_, errinsert := internaldb.Exec(sqlstr)
 			if errinsert != nil {
-
-				logrus.Fatal(errinsert)
+				logrus.Error(errinsert)
+				logrus.Fatal(sqlstr)
 			}
 		} else {
 			if rowstring == "" {
@@ -167,7 +182,7 @@ func InsertRecord(tenant_id string, tablename string, rows *sql.Rows) (err error
 
 	if rowstring != "" {
 		sqlstr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", tablename, colstring, rowstring)
-		_, errinsert := localdb.Exec(sqlstr)
+		_, errinsert := internaldb.Exec(sqlstr)
 		if errinsert != nil {
 
 			logrus.Fatal(errinsert)

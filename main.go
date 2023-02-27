@@ -20,12 +20,15 @@ var localdbname string = ""
 var localdbhost string = ""
 var localdbuser string = ""
 var localdbpass string = ""
+var localdbsetting Model_DBSetting
 var datafolder string = ""
 var mastertables []string
 var Delimiter = ','
 var mapfields = make(map[string]*hashmap.Map)
 var mapfieldstr = make(map[string]string)
 var excludedtables = []string{"tenant_master", "gps_event", "system_event"}
+
+const MAX_CONCURRENT_JOBS = 4
 
 func main() {
 	// sql_tablelist := "SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_type = 'BASE TABLE' and table_schema=?"
@@ -41,6 +44,10 @@ func main() {
 	localdbhost = os.Getenv("dbhost")
 	localdbuser = os.Getenv("dbuser")
 	localdbpass = os.Getenv("dbpass")
+	localdbsetting.Db = localdbname
+	localdbsetting.Host = localdbhost
+	localdbsetting.User = localdbuser
+	localdbsetting.Pass = localdbpass
 
 	fmt.Println("Welcome mysql db consoler:")
 
@@ -76,14 +83,24 @@ func main() {
 
 		}
 
+		//close connection. every import create new connection instead
+		localdb.Close()
+		// waitChan := make(chan struct{}, MAX_CONCURRENT_JOBS)
+		// count := 0
+
 		for i, setting := range dbsettings {
+			// waitChan <- struct{}{}
+			// count++
+
 			wg.Add(1) // declare new go routine added
 			go func(i int, dbsetting Model_DBSetting, tables []string) {
-				logrus.Info(i, dbsetting)
+				logrus.Info(i, "import tenant :", dbsetting.Tenant_id)
+
 				// ExportDBToCSV(dbsetting, tables)
 				// ImportCSVToDB(dbsetting.Tenant_id, tables)
-				localdb.Exec("Set @@SQL_MODE=''")
+
 				ImportData(dbsetting, tables)
+				// <-waitChan
 				defer wg.Done()
 			}(i, setting, mastertables)
 		}

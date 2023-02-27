@@ -83,7 +83,14 @@ func GetAllTableAndFields(db *sql.DB, dbname string) {
 			} else {
 				fields := mapfields[tablename] //mapfields.Get(tablename)
 				// logrus.Warn("add ", tablename, ":", f.Field, ":", f.NumericPrecision.String)
-				fields.Put(f.Field, f.NumericPrecision.Valid)
+				ftype := "string"
+				if f.NumericPrecision.Valid == true {
+					ftype = "number"
+				} else if f.DataType == "date" || f.DataType == "datetime" {
+					ftype = f.DataType
+				}
+
+				fields.Put(f.Field, ftype)
 			}
 		}
 
@@ -130,7 +137,7 @@ func string2interface(s []string) []interface{} {
 }
 
 func GetRemoteDatabases() (dbsettings []Model_DBSetting) {
-	sql := "SELECT * FROM tenant_master"
+	sql := "SELECT * FROM tenant_master where imported=''"
 	// logrus.Fatal("Ping", sql, localdb)
 
 	res, err := localdb.Query(sql)
