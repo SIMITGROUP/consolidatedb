@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"log"
 	"math/big"
@@ -27,11 +28,22 @@ var Delimiter = ','
 var mapfields = make(map[string]*hashmap.Map)
 var mapfieldstr = make(map[string]string)
 var excludedtables = []string{"tenant_master", "gps_event", "system_event"}
+var RunMode = ""
 
-const MAX_CONCURRENT_JOBS = 4
+// const MAX_CONCURRENT_JOBS = 4
 
 func main() {
 	// sql_tablelist := "SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_type = 'BASE TABLE' and table_schema=?"
+
+	flag.StringVar(&RunMode, "mode", "", "Run mode: init/append/addindex")
+	flag.Parse()
+
+	if RunMode == "append" || RunMode == "init" {
+		//ok
+	} else {
+		logrus.Fatal("mode '", RunMode, "' is not supported. Please add flat --mode=init/append")
+	}
+
 	var wg sync.WaitGroup
 	err := godotenv.Load()
 	start := time.Now()
@@ -49,7 +61,7 @@ func main() {
 	localdbsetting.User = localdbuser
 	localdbsetting.Pass = localdbpass
 
-	fmt.Println("Welcome mysql db consoler:")
+	fmt.Println("Welcome mysql db consoler:", RunMode)
 
 	// CreateFolderIfNotExists(datafolder)
 
@@ -58,21 +70,21 @@ func main() {
 	defer localdb.Close()
 
 	if err == nil {
-		fmt.Println("connected")
+		logrus.Info(localdbname, " connected")
 
-		localtables := GetAllTables(localdb, localdbname) // GetLocalTables()
+		// localtables := GetAllTables(localdb, localdbname) // GetLocalTables()
 
-		// names := lo.Uniq[string]([]string{"Samuel", "John", "Samuel"})
-		tablecount := len(localtables)
-		logrus.Info("table count at local:", tablecount)
+		// // names := lo.Uniq[string]([]string{"Samuel", "John", "Samuel"})
+		// tablecount := len(localtables)
+		// logrus.Info("table count at local:", tablecount)
 
-		if tablecount == 0 { //
-			logrus.Fatal(localdbname + " does not have table tenant_master")
-		}
+		// if tablecount == 0 { //
+		// 	logrus.Fatal(localdbname + " does not have table tenant_master")
+		// }
 
-		if tablecount == 1 {
-			//run create tables
-		}
+		// if tablecount == 1 {
+		// 	//run create tables
+		// }
 		// logrus.Fatal("GetRemoteDatabases")
 		dbsettings := GetRemoteDatabases()
 
@@ -145,6 +157,11 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 	},
 	{}]
 	*/
+	if RunMode != "init" {
+		logrus.Info("Skip generate table schemes")
+		return
+	}
+	// tables1 := []string{"acc_payment"}
 	for _, tablename := range tables {
 		//drop local table if exists
 		dropsql := "DROP TABLE IF EXISTS " + tablename

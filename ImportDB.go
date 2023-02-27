@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -65,6 +66,7 @@ func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 	db, err := ConnectDB(dbsetting)
 	internaldb, _ := ConnectDB(localdbsetting)
 	//loop through all table
+	// tables1 := []string{"acc_payment"}
 	for _, tablename := range tables {
 		// get all data
 
@@ -80,7 +82,9 @@ func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 			logrus.Fatal(err)
 		}
 	}
+	currentTime := time.Now()
 
+	internaldb.Exec("Update tenant_master set imported= ? WHERE tenant_id=?", dbsetting.Tenant_id, currentTime.Format("2006.01.02 15:04:05"))
 	return
 }
 
@@ -136,19 +140,22 @@ func InsertRecord(tenant_id string, internaldb *sql.DB, tablename string, rows *
 						value = "0"
 					}
 					tmp += ", " + value
-				} else { // else if fieldtype == "date" {
-					// 	if value == "" {
-					// 		value = "0000-00-00"
-					// 	}
-					// 	tmp += ", '" + value + "'"
+				} else if fieldtype == "date" {
+					if value == "" {
+						value = "0000-00-00"
+					}
+					tmp += ", '" + value + "'"
 
-					// } else if fieldtype == "datetime" {
-					// 	if value == "" {
-					// 		value = "0000-00-00 00:00:00"
-					// 	}
-					// 	tmp += ", '" + value + "'"
+				} else if fieldtype == "datetime" {
+					if value == "" {
+						value = "0000-00-00 00:00:00"
+					}
+					if f == "document_trackupdated" && value != "0000-00-00 00:00:00" {
+						logrus.Warn(tenant_id, "=> ", row[50], " => document_trackupdated: ", value)
+					}
+					tmp += ", '" + value + "'"
 
-					// }else {
+				} else {
 					tmp += ", '" + MysqlRealEscapeString(value) + "'"
 				}
 

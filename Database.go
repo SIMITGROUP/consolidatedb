@@ -137,7 +137,10 @@ func string2interface(s []string) []interface{} {
 }
 
 func GetRemoteDatabases() (dbsettings []Model_DBSetting) {
-	sql := "SELECT * FROM tenant_master where imported=''"
+	sql := "SELECT * FROM tenant_master where isactive=1"
+	if RunMode == "append" {
+		sql += " and imported ='' "
+	}
 	// logrus.Fatal("Ping", sql, localdb)
 
 	res, err := localdb.Query(sql)
