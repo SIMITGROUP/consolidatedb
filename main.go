@@ -206,11 +206,11 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 			// sqlcreate = sqlcreate + ", PRIMARY KEY (" + primarykey + ")) ENGINE=InnoDB"
 			sqlcreate = sqlcreate + ") ENGINE=InnoDB"
 			logrus.Info("Created table ", tablename)
-			_, errcreate := localdb.Exec(sqlcreate)
+			res, errcreate := localdb.Query(sqlcreate)
 			if errcreate != nil {
 				logrus.Fatal(errcreate)
 			}
-
+			res.Close()
 		} else {
 			logrus.Fatal(err2)
 		}
