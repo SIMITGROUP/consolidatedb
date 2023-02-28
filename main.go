@@ -66,7 +66,7 @@ func main() {
 	// CreateFolderIfNotExists(datafolder)
 
 	localdb, err = ConnectLocalDB()
-
+	localdb.SetMaxOpenConns(20)
 	defer localdb.Close()
 
 	if err == nil {
@@ -165,7 +165,7 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 	for _, tablename := range tables {
 		//drop local table if exists
 		dropsql := "DROP TABLE IF EXISTS " + tablename
-		_, errdrop := localdb.Query(dropsql)
+		_, errdrop := localdb.Exec(dropsql)
 		if errdrop != nil {
 			logrus.Fatal(errdrop)
 		}

@@ -101,7 +101,7 @@ func InsertRecord(tenant_id string, internaldb *sql.DB, tablename string, rows *
 	// colstring := strings.Join(cols, ",")
 	row := make([][]byte, len(cols))
 	// row[0] = []byte(tenant_id)
-	rowPtr := make([]any, len(cols))
+	rowPtr := make([]interface{}, len(cols))
 	for i := range row {
 		rowPtr[i] = &row[i]
 	}
