@@ -201,7 +201,7 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 			}
 
 			if primarykey == "" {
-				logrus.Fatal(tablename + " undefined primarykey")
+				logrus.Warn(tablename + " undefined primarykey")
 			}
 			// sqlcreate = sqlcreate + ", PRIMARY KEY (" + primarykey + ")) ENGINE=InnoDB"
 			sqlcreate = sqlcreate + ") ENGINE=InnoDB"
