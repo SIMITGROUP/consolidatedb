@@ -69,7 +69,10 @@ func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 	// tables1 := []string{"acc_payment"}
 	for _, tablename := range tables {
 		// get all data
-
+		exists, _ := in_array(tablename, excludedtables)
+		if exists {
+			continue
+		}
 		sql := fmt.Sprintf("SELECT %s FROM %s", mapfieldstr[tablename], tablename)
 		// logrus.Info(sql)
 		rows, err := db.Query(sql)
