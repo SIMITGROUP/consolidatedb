@@ -89,8 +89,9 @@ func GetAllTableAndFields(db *sql.DB, dbname string) {
 				} else if f.DataType == "date" || f.DataType == "datetime" {
 					ftype = f.DataType
 				}
-
-				fields.Put(f.Field, ftype)
+				if fields != nil {
+					fields.Put(f.Field, ftype)
+				}
 			}
 		}
 
