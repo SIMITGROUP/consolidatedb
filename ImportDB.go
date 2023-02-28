@@ -195,7 +195,7 @@ func InsertRecord(tenant_id string, internaldb *sql.DB, tablename string, rows *
 		_, errinsert := internaldb.Exec(sqlstr)
 		if errinsert != nil {
 
-			logrus.Fatal(errinsert)
+			logrus.Fatal(tablename, errinsert)
 		}
 	}
 	fmt.Println(rowcount)
