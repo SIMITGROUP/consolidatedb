@@ -82,7 +82,7 @@ func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 			rows.Close()
 		} else {
 
-			logrus.Fatal(err)
+			logrus.Fatal(dbsetting.Tenant_id, ":", tablename, "=>", err)
 		}
 	}
 	currentTime := time.Now()
