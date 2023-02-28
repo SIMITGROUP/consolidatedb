@@ -87,7 +87,7 @@ func ImportData(dbsetting Model_DBSetting, tables []string) (err error) {
 	}
 	currentTime := time.Now()
 
-	internaldb.Exec("Update tenant_master set imported= ? WHERE tenant_id=?", dbsetting.Tenant_id, currentTime.Format("2006.01.02 15:04:05"))
+	internaldb.Exec("Update tenant_master set imported= ? WHERE tenant_id=?", currentTime.Format("2006.01.02 15:04:05"), dbsetting.Tenant_id)
 	return
 }
 
