@@ -100,7 +100,7 @@ func InsertRecord(tenant_id string, internaldb *sql.DB, tablename string, rows *
 			cols = append(cols, colname)
 		}
 	}
-
+	fmt.Print("Import [", tenant_id, "] => ", tablename, " x ")
 	// colstring := strings.Join(cols, ",")
 	row := make([][]byte, len(cols))
 	// row[0] = []byte(tenant_id)
@@ -198,7 +198,7 @@ func InsertRecord(tenant_id string, internaldb *sql.DB, tablename string, rows *
 			logrus.Fatal(errinsert)
 		}
 	}
-	logrus.Info("Import [", tenant_id, "] => ", tablename, " x ", rowcount)
+	fmt.Println(rowcount)
 	// if rowcount > 0 {
 	// 	log.Fatal("Done")
 	// }
