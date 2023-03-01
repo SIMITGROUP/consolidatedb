@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"flag"
 	"fmt"
 	"log"
 	"math/big"
@@ -17,10 +16,11 @@ import (
 
 var localdb *sql.DB
 var table_tenant string = "tenant_master"
-var localdbname string = ""
-var localdbhost string = ""
-var localdbuser string = ""
-var localdbpass string = ""
+
+// var localdbname string = ""
+// var localdbhost string = ""
+// var localdbuser string = ""
+// var localdbpass string = ""
 var localdbsetting Model_DBSetting
 var datafolder string = ""
 var mastertables []string
@@ -33,66 +33,48 @@ var RunMode = ""
 // const MAX_CONCURRENT_JOBS = 4
 
 func main() {
-	// sql_tablelist := "SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_type = 'BASE TABLE' and table_schema=?"
-
-	flag.StringVar(&RunMode, "mode", "", "Run mode: init/append/addindex")
-	flag.Parse()
-
-	if RunMode == "append" || RunMode == "init" {
-		//ok
-	} else {
-		logrus.Fatal("mode '", RunMode, "' is not supported. Please add flat --mode=init/append")
-	}
-
 	var wg sync.WaitGroup
+	args := os.Args
+	if len(args) < 2 {
+		logrus.Fatal("Undefine run mode argument, supply argument 'init' or 'append'.")
+	} else {
+		RunMode = args[1]
+	}
 	err := godotenv.Load()
 	start := time.Now()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	cwd, _ := os.Getwd()
-	datafolder = cwd + "/data"
-	localdbname = os.Getenv("dbname")
-	localdbhost = os.Getenv("dbhost")
-	localdbuser = os.Getenv("dbuser")
-	localdbpass = os.Getenv("dbpass")
-	localdbsetting.Db = localdbname
-	localdbsetting.Host = localdbhost
-	localdbsetting.User = localdbuser
-	localdbsetting.Pass = localdbpass
 
-	fmt.Println("Welcome mysql db consoler:", RunMode)
-
-	// CreateFolderIfNotExists(datafolder)
-
-	localdb, err = ConnectLocalDB()
+	localdbsetting.Db = os.Getenv("dbname")
+	localdbsetting.Host = os.Getenv("dbhost")
+	localdbsetting.User = os.Getenv("dbuser")
+	localdbsetting.Pass = os.Getenv("dbpass")
+	localdb, err = ConnectDB(localdbsetting)
 	localdb.SetMaxOpenConns(20)
 	defer localdb.Close()
-
+	var dbsettings []Model_DBSetting
 	if err == nil {
-		logrus.Info(localdbname, " connected")
+		logrus.Info(localdbsetting.Db, " connected")
 
-		// localtables := GetAllTables(localdb, localdbname) // GetLocalTables()
+		if len(args) >= 2 {
+			dbsettings = GetRemoteDatabases()
+			if len(dbsettings) == 0 {
+				logrus.Fatal("no tenant record ready for import")
+			}
 
-		// // names := lo.Uniq[string]([]string{"Samuel", "John", "Samuel"})
-		// tablecount := len(localtables)
-		// logrus.Info("table count at local:", tablecount)
+			if RunMode == "init" {
+				mastertables = GetTables(dbsettings[0])
+				err := GenerateTables(dbsettings[0], mastertables)
+				if err != nil {
+					logrus.Fatal(err)
+				}
 
-		// if tablecount == 0 { //
-		// 	logrus.Fatal(localdbname + " does not have table tenant_master")
-		// }
-
-		// if tablecount == 1 {
-		// 	//run create tables
-		// }
-		// logrus.Fatal("GetRemoteDatabases")
-		dbsettings := GetRemoteDatabases()
-
-		if len(dbsettings) == 0 {
-			logrus.Fatal("no record found in tenant_master table")
-		} else {
-			mastertables = GenerateTables(dbsettings[0])
-
+			} else if RunMode == "append" {
+				mastertables = GetTables(localdbsetting)
+			} else {
+				logrus.Fatal("mode '", args[1], "' is not supported. Please supply argument 'init' or 'append'")
+			}
 		}
 
 		//close connection. every import create new connection instead
@@ -139,7 +121,7 @@ func main() {
 }
 
 // generate master tables according first db setting, return list of tables
-func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
+func GetTables(dbsetting Model_DBSetting) (tables []string) {
 	db, err := ConnectDB(dbsetting)
 	if err == nil {
 		tables = GetAllTables(db, dbsetting.Db)
@@ -148,6 +130,23 @@ func GenerateTables(dbsetting Model_DBSetting) (tables []string) {
 		// 	logrus.Info(i, ":", j.Keys())
 		// }
 	}
+	db.Close()
+	return tables
+}
+func GenerateTables(dbsetting Model_DBSetting, tables []string) (err error) {
+	db, err := ConnectDB(dbsetting)
+	if err != nil {
+		return
+	}
+
+	// db, err := ConnectDB(dbsetting)
+	// if err == nil {
+	// 	tables = GetAllTables(db, dbsetting.Db)
+	// 	GetAllTableAndFields(db, dbsetting.Db)
+	// 	// for i, j := range mapfields {
+	// 	// 	logrus.Info(i, ":", j.Keys())
+	// 	// }
+	// }
 	/*index data
 	[{
 		indexname: index1,

@@ -10,21 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func ConnectLocalDB() (*sql.DB, error) {
-
-	// host string, dbname string, user string, pass string
-	dbsetting := Model_DBSetting{
-		Host: localdbhost,
-		Db:   localdbname,
-
-		User: localdbuser,
-		Pass: localdbpass,
-	}
-	return ConnectDB(dbsetting)
-}
-
 func ConnectDB(dbsetting Model_DBSetting) (*sql.DB, error) {
-
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/%s", dbsetting.User, dbsetting.Pass, dbsetting.Host, dbsetting.Db)
 	db, err := sql.Open("mysql", connstr)
 	if err != nil {
@@ -32,7 +18,6 @@ func ConnectDB(dbsetting Model_DBSetting) (*sql.DB, error) {
 	} else {
 		return db, nil
 	}
-
 }
 
 //	func GetLocalTables() []string {
