@@ -27,7 +27,7 @@ var mastertables []string
 var Delimiter = ','
 var mapfields = make(map[string]*hashmap.Map)
 var mapfieldstr = make(map[string]string)
-var excludedtables = []string{"tenant_master", "gps_event", "system_event", "system_image", "cs_ticketline"}
+var excludedtables = []string{"tenant_master", "gps_event", "system_event", "system_image", "system_attachmenthistory"}
 var RunMode = ""
 
 // const MAX_CONCURRENT_JOBS = 4
